@@ -4,9 +4,40 @@ import { useEffect, useRef, useState } from 'react'
 import Hero from './pages/intro'
 import Splash from './pages/splash'
 import heroImage from './assets/hero.png'
+import foto1 from './assets/foto1.jpeg'
+import foto2 from './assets/foto2.jpeg'
+import foto3 from './assets/foto3.jpeg'
+import foto4 from './assets/foto4.jpeg'
 import './App.css'
 const targetDate = new Date('2026-06-01T00:00:00')
 const musicSrc = '/music.mp3'
+
+const extraPhotos = [
+  {
+    title: 'Manis banget',
+    caption: 'Satu momen kecil yang rasanya tetap hangat kalau diingat lagi.',
+    position: 'object-center',
+    src: foto1,
+  },
+  {
+    title: 'Peluk lembut',
+    caption: 'Foto yang terasa tenang, seperti jeda yang paling kamu butuhkan.',
+    position: 'object-top',
+    src: foto2,
+  },
+  {
+    title: 'Cahaya favorit',
+    caption: 'Nuansa yang paling pas buat hari spesial kamu.',
+    position: 'object-[50%_35%]',
+    src: foto3,
+  },
+  {
+    title: 'Memori manis',
+    caption: 'Simpan yang ini, biar bisa dibuka lagi kapan saja.',
+    position: 'object-[50%_15%]',
+    src: foto4,
+  },
+]
 
 
 function App() {
@@ -188,7 +219,7 @@ function App() {
       <AnimatePresence>
         {showEqualizer ? (
           <motion.section
-            className="mx-auto w-full max-w-6xl min-h-[150vh] px-4 pb-16 pt-8 sm:px-6 lg:px-8"
+            className="mx-auto w-full max-w-6xl min-h-[190vh] px-4 pb-16 pt-8 sm:px-6 lg:px-8"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
@@ -220,7 +251,7 @@ function App() {
                         Equalizer visual
                       </p>
                       <h3 className="mt-2 font-serif text-2xl text-stone-900 sm:text-3xl">
-                        Musik dan ucapan spesial
+                        Sayang..., Semoga hari ini jadi awal yang paling manis untuk tahun-tahun ke depan.
                       </h3>
                     </div>
                     <button
@@ -231,11 +262,6 @@ function App() {
                       {isMusicPlaying ? 'Music Off' : 'Music On'}
                     </button>
                   </div>
-
-                  <p className="mt-4 max-w-xl text-sm leading-7 text-stone-600 sm:text-base">
-                    Setelah video selesai, bagian ini muncul saat kamu scroll. Di sini ada foto kenangan,
-                    equalizer yang bergerak, dan tombol untuk menyalakan atau mematikan musik latar.
-                  </p>
 
                   <div className="mt-8 flex h-36 items-end justify-center gap-2 sm:h-40 sm:gap-3" aria-hidden="true">
                     {[18, 54, 28, 72, 36, 84, 48, 66, 24, 90, 42, 78].map((barHeight, index) => (
@@ -257,6 +283,34 @@ function App() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              {extraPhotos.map((photo, index) => (
+                <motion.figure
+                  key={photo.title}
+                  className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/80 shadow-[0_16px_50px_rgba(122,71,75,0.12)] backdrop-blur-xl"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, delay: 0.08 * index }}
+                >
+                  <div className="relative aspect-[4/5]">
+                    <img
+                      src={photo.src}
+                      alt={photo.title}
+                      className={`h-full w-full object-cover ${photo.position}`}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                  </div>
+                  <figcaption className="p-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.45em] text-rose-400">
+                      Foto tambahan
+                    </p>
+                    <h4 className="mt-2 font-serif text-2xl text-stone-900">{photo.title}</h4>
+                    <p className="mt-3 text-sm leading-6 text-stone-600">{photo.caption}</p>
+                  </figcaption>
+                </motion.figure>
+              ))}
             </div>
           </motion.section>
         ) : null}
