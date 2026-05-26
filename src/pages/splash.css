@@ -1,0 +1,89 @@
+.splash-rain {
+  position: absolute;
+  inset: -12% 0;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+  opacity: 0.84;
+  pointer-events: none;
+}
+
+.splash-column {
+  position: absolute;
+  top: -15%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation-name: splashFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.splash-word {
+  display: block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.55em;
+  color: rgba(255, 255, 255, 0.12);
+  text-shadow:
+    0 0 8px rgba(255, 115, 180, 0.36),
+    0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.splash-column:nth-child(3n) .splash-word,
+.splash-column:nth-child(4n) .splash-word {
+  color: rgba(255, 255, 255, 0.16);
+  text-shadow:
+    0 0 10px rgba(244, 114, 182, 0.62),
+    0 0 24px rgba(255, 182, 193, 0.42);
+}
+
+.splash-column:nth-child(2n) .splash-word {
+  opacity: 0.72;
+  text-shadow:
+    0 0 10px rgba(255, 223, 186, 0.52),
+    0 0 24px rgba(251, 191, 36, 0.35);
+}
+
+@keyframes splashFall {
+  from {
+    transform: translateY(-18%);
+  }
+
+  to {
+    transform: translateY(125%);
+  }
+}
+
+/* subtle particle layer */
+.splash-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.splash-particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 50%;
+  filter: blur(0.6px);
+  opacity: 0.85;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  from { transform: translateY(0) scale(1); opacity: 0.6 }
+  50% { transform: translateY(-6px) scale(1.2); opacity: 1 }
+  to { transform: translateY(0) scale(1); opacity: 0.6 }
+}
+
+/* glass backdrop for greeting */
+.splash-greeting {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px) saturate(1.05);
+}
