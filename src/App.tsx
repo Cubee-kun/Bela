@@ -109,34 +109,6 @@ function App() {
     }
   }, [showSplash])
 
-  // When splash finishes, attempt to play background music
-  useEffect(() => {
-    if (showSplash) return
-    const audio = audioRef.current
-    if (!audio) return
-
-    audio.play().then(() => {
-      setIsMusicPlaying(true)
-    }).catch(() => {
-      // Autoplay blocked; leave paused until user interacts
-      setIsMusicPlaying(false)
-    })
-  }, [showSplash])
-
-  // If the video has ended, resume the background music when possible.
-  useEffect(() => {
-    if (!videoHasEnded) return
-    const audio = audioRef.current
-    if (!audio) return
-
-    audio.muted = false
-    audio.play().then(() => {
-      setIsMusicPlaying(true)
-    }).catch(() => {
-      setIsMusicPlaying(false)
-    })
-  }, [videoHasEnded])
-
   // On first user scroll, reveal audio controls and force-mute the video
   useEffect(() => {
     let fired = false
@@ -175,18 +147,60 @@ function App() {
     setIsMusicPlaying(false)
   }
 
+  const primeMusicMuted = async () => {
+    const audio = audioRef.current
+
+    if (!audio) {
+      return
+    }
+
+    audio.muted = true
+
+    try {
+      await audio.play()
+      setIsMusicPlaying(true)
+    } catch {
+      setIsMusicPlaying(false)
+    }
+  }
+
+  const revealMusic = async () => {
+    const audio = audioRef.current
+
+    if (!audio) {
+      return
+    }
+
+    audio.muted = false
+
+    try {
+      if (audio.paused) {
+        await audio.play()
+      }
+
+      setIsMusicPlaying(true)
+    } catch {
+      setIsMusicPlaying(false)
+    }
+  }
+
   const handleVideoStart = () => {
     const audio = audioRef.current
     if (!audio) return
     audio.muted = true
   }
 
-  const handleVideoEnd = () => {
-    const audio = audioRef.current
-    if (audio) {
-      audio.muted = false
-    }
+  const handleGiftOpen = () => {
+    void primeMusicMuted()
+  }
+
+  const handleBurstComplete = () => {
+    void revealMusic()
     setShowEqualizer(true)
+    setShowAudioControl(true)
+  }
+
+  const handleVideoEnd = () => {
     setVideoHasEnded(true)
   }
 
@@ -214,6 +228,8 @@ function App() {
         forceMute={forceMuteVideo}
         onVideoStart={handleVideoStart}
         onVideoEnd={handleVideoEnd}
+        onGiftOpen={handleGiftOpen}
+        onBurstComplete={handleBurstComplete}
       />
 
       <AnimatePresence>
@@ -225,15 +241,15 @@ function App() {
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
           >
-            <div className="sticky top-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 shadow-[0_20px_80px_rgba(122,71,75,0.14)] backdrop-blur-xl">
+            <div className="sticky top-6 overflow-hidden rounded-4xl border border-white/70 bg-white/80 shadow-[0_20px_80px_rgba(122,71,75,0.14)] backdrop-blur-xl">
               <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="relative min-h-[320px] bg-stone-950">
+                <div className="relative min-h-80 bg-stone-950">
                   <img
                     src={heroImage}
                     alt="Kenangan manis untuk Bela Amelia Nuralfiani"
                     className="h-full w-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
                     <p className="text-xs font-semibold uppercase tracking-[0.45em] text-rose-100/90">
                       Foto kenangan
@@ -267,7 +283,7 @@ function App() {
                     {[18, 54, 28, 72, 36, 84, 48, 66, 24, 90, 42, 78].map((barHeight, index) => (
                       <motion.span
                         key={`${barHeight}-${index}`}
-                        className="block w-3 rounded-full bg-gradient-to-t from-rose-400 via-fuchsia-400 to-amber-200 shadow-[0_0_18px_rgba(236,72,153,0.35)] sm:w-4"
+                        className="block w-3 rounded-full bg-linear-to-t from-rose-400 via-fuchsia-400 to-amber-200 shadow-[0_0_18px_rgba(236,72,153,0.35)] sm:w-4"
                         style={{ height: `${barHeight}%` }}
                         animate={{
                           height: [`${barHeight}%`, `${Math.max(18, barHeight - 22)}%`, `${Math.min(92, barHeight + 18)}%`, `${barHeight}%`],
@@ -294,13 +310,13 @@ function App() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.45, delay: 0.08 * index }}
                 >
-                  <div className="relative aspect-[4/5]">
+                  <div className="relative aspect-4/5">
                     <img
                       src={photo.src}
                       alt={photo.title}
                       className={`h-full w-full object-cover ${photo.position}`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
                   </div>
                   <figcaption className="p-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.45em] text-rose-400">
