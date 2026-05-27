@@ -1,23 +1,86 @@
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 import './splash.css'
 
 const splashLetters = 'HAPPYBIRTHDAYBELA'.split('')
 
-const splashColumns = Array.from({ length: 22 }, (_, index) => splashLetters[index % splashLetters.length])
+const splashGlyphs = Array.from({ length: 180 }, (_, index) => {
+  const letter = splashLetters[index % splashLetters.length]
+
+  return {
+    letter,
+    left: (index * 5.7) % 100,
+    delay: index * -0.14,
+    duration: 4.5 + (index % 8) * 0.35,
+    size: 12 + (index % 5) * 2,
+    xOffset: ((index % 7) - 3) * 5,
+    opacity: 0.38 + (index % 6) * 0.08,
+  }
+})
 
 type SplashProps = {
   splashNumber: number
   eventCountdown: string
   isMusicPlaying: boolean
   toggleMusic: () => void
+  onCountdownFinish?: () => void
 }
 
-function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic }: SplashProps) {
+function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic, onCountdownFinish }: SplashProps) {
   const isGreeting = splashNumber === 0
+  const [showLoader, setShowLoader] = useState(true)
+  const [contentVisible, setContentVisible] = useState(false)
+  const [countValue, setCountValue] = useState<number | null>(null)
+  const [showHB, setShowHB] = useState(false)
+  const countdownActive = (countValue !== null) || showHB
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setShowLoader(false), 1500)
+    return () => window.clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (!showLoader) {
+      const t = window.setTimeout(() => setContentVisible(true), 260)
+      return () => window.clearTimeout(t)
+    }
+    setContentVisible(false)
+  }, [showLoader])
+
+  // countdown 3 -> 0 over 3 seconds, then show "Happy Birthday" for 1s
+  useEffect(() => {
+    if (!contentVisible) return
+
+    const interval = 3000 / 4 // 4 steps (3,2,1,0) across 3s -> 0.75s
+    const timers: number[] = []
+
+    setCountValue(3)
+
+    for (let i = 1; i <= 3; i++) {
+      timers.push(window.setTimeout(() => setCountValue(3 - i), Math.round(i * interval)))
+    }
+
+    // after full 3s, show HB for 1s
+    timers.push(window.setTimeout(() => {
+      setCountValue(null)
+      setShowHB(true)
+    }, 3000))
+
+    timers.push(window.setTimeout(() => {
+      setShowHB(false)
+      if (typeof onCountdownFinish === 'function') onCountdownFinish()
+    }, 4000))
+
+    return () => timers.forEach((t) => window.clearTimeout(t))
+  }, [contentVisible])
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] overflow-hidden bg-[#040404] text-fuchsia-400"
+      className="fixed inset-0 z-100 overflow-hidden bg-[#040404] text-fuchsia-400"
+      data-splash-number={splashNumber}
+      data-countdown={eventCountdown}
+      data-greeting={isGreeting ? 'yes' : 'no'}
+      data-countdown-active={countdownActive ? 'yes' : 'no'}
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -25,36 +88,97 @@ function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic }: S
       aria-label="Splash screen"
       role="presentation"
     >
+      <div aria-hidden={!showLoader}>
+        <motion.div
+          className="initial-loader fixed inset-0 z-110 flex items-center justify-center"
+          initial={{ opacity: 1 }}
+          animate={showLoader ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.45 }}
+        >
+          <div className="text-center px-6">
+            <div className="loader-wrap">
+              <div className="spinner" />
+            </div>
+            <motion.h2
+              className="mt-6 font-serif text-2xl text-fuchsia-100"
+              initial={{ y: 8, opacity: 0 }}
+              animate={showLoader ? { y: 0, opacity: 1 } : { y: -6, opacity: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              Preparing something special...
+            </motion.h2>
+            <motion.p
+              className="mt-2 text-sm text-fuchsia-200/80"
+              initial={{ y: 6, opacity: 0 }}
+              animate={showLoader ? { y: 0, opacity: 1 } : { y: -4, opacity: 0 }}
+              transition={{ duration: 0.5, delay: 0.06 }}
+            >
+              Good things take time.
+            </motion.p>
+          </div>
+        </motion.div>
+      </div>
       <div className="splash-rain" aria-hidden="true">
-        {splashColumns.map((word, index) => (
+        {splashGlyphs.map((glyph, index) => (
           <motion.div
-            key={`${word}-${index}`}
-            className="splash-column"
+            key={`${glyph.letter}-${index}`}
+            className="splash-glyph"
             style={{
-              left: `${index * 4.8}%`,
-              animationDuration: `${8 + (index % 5) * 1.2}s`,
-              animationDelay: `${index * -0.55}s`,
+              left: `${glyph.left}%`,
+              fontSize: `${glyph.size}px`,
+              opacity: glyph.opacity,
             }}
-            animate={{ opacity: [0.22, 0.95, 0.38] }}
-            transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: index * 0.08 }}
+            animate={{
+              opacity: [0, glyph.opacity, glyph.opacity, 0],
+              y: ['-18vh', '48vh', '118vh'],
+              x: [glyph.xOffset, glyph.xOffset + 10, glyph.xOffset - 6],
+              scale: [0.92, 1, 0.98],
+            }}
+            transition={{
+              duration: glyph.duration,
+              repeat: Infinity,
+              ease: 'linear',
+              delay: glyph.delay,
+            }}
           >
-              {Array.from({ length: 18 }).map((_, row) => (
-                <span key={`${word}-${row}`} className="splash-word">
-                  {word}
-                </span>
-              ))}
+            <span className={`splash-word ${index % 5 === 0 ? 'splash-word-bright' : ''} ${index % 9 === 0 ? 'splash-word-soft' : ''}`}>
+              {glyph.letter}
+            </span>
           </motion.div>
         ))}
       </div>
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,105,180,0.18),_transparent_28%),radial-gradient(circle_at_top,_rgba(255,255,255,0.05),_transparent_22%)]" aria-hidden="true" />
+      <div className="splash-cinematic" aria-hidden="true">
+        <div className="splash-vignette" />
+        <div className="splash-grain" />
+        <div className="splash-soft-blur splash-soft-blur-left" />
+        <div className="splash-soft-blur splash-soft-blur-right" />
+      </div>
+
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,105,180,0.18),transparent_28%),radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_22%)]" aria-hidden="true" />
 
       <motion.div
         className="relative flex min-h-screen items-center justify-center px-4"
         initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        animate={contentVisible ? { scale: 1, opacity: 1 } : { scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.65, ease: 'easeOut' }}
       >
+        {/* Countdown / Happy Birthday overlay */}
+        {contentVisible && (countValue !== null || showHB) ? (
+          <div className="fixed inset-0 z-120 flex items-center justify-center pointer-events-none">
+            {countValue !== null ? (
+              <motion.div className="text-center text-fuchsia-100" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.28 }}>
+                <div className="font-black text-[6.5rem] sm:text-[10rem] leading-none drop-shadow-[0_0_40px_rgba(236,72,153,0.45)]">{countValue}</div>
+              </motion.div>
+            ) : (
+              showHB && (
+                <motion.div className="text-center text-fuchsia-100" initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.3 }}>
+                  <div className="font-serif text-5xl sm:text-7xl font-semibold drop-shadow-[0_0_28px_rgba(236,72,153,0.45)]">Happy Birthday</div>
+                </motion.div>
+              )
+            )}
+          </div>
+        ) : null}
         <motion.button
           type="button"
           aria-pressed={isMusicPlaying}
@@ -73,59 +197,6 @@ function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic }: S
             </svg>
           )}
         </motion.button>
-
-        <div className="text-center">
-          {isGreeting ? (
-            <motion.div
-              key="greeting"
-              className="mx-auto max-w-4xl rounded-[2rem] border border-white/10 bg-white/5 px-6 py-10 text-center shadow-[0_0_60px_rgba(236,72,153,0.18)] backdrop-blur-xl sm:px-10 sm:py-14"
-              initial={{ scale: 0.92, opacity: 0, y: 18 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
-            >
-              <p className="text-xs uppercase tracking-[0.6em] text-fuchsia-200/80 sm:text-sm">Happy Birthday</p>
-              <h1 className="mt-4 font-serif text-4xl font-semibold leading-tight text-fuchsia-100 sm:text-6xl">Happy Birthday, Bela Amelia Nuralfiani</h1>
-              <p className="mt-4 text-sm text-fuchsia-100/70 sm:text-base">Semoga hari ini jadi awal yang paling manis.</p>
-              <p className="mt-4 text-sm text-fuchsia-200/70 sm:text-base">{eventCountdown}</p>
-            </motion.div>
-          ) : (
-            <motion.div
-              key={splashNumber}
-              className="mx-auto flex h-72 w-72 items-center justify-center rounded-full bg-fuchsia-500/10 text-[9rem] font-black leading-none text-fuchsia-300 drop-shadow-[0_0_28px_rgba(236,72,153,0.4)] sm:h-96 sm:w-96 sm:text-[13rem]"
-              initial={{ scale: 0.84, opacity: 0, y: 16 }}
-              animate={{ scale: [0.94, 1.04, 1], opacity: 1, y: 0, rotate: [-1, 1.5, 0] }}
-              transition={{ duration: 0.55, ease: 'easeOut' }}
-            >
-              {splashNumber}
-            </motion.div>
-          )}
-
-          {!isGreeting ? (
-            <>
-              <motion.h1
-                className="mt-8 font-serif text-4xl font-semibold tracking-tight text-fuchsia-100 sm:text-6xl"
-                initial={{ y: 16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.12 }}
-              >
-                Happy Birthday
-              </motion.h1>
-
-              <motion.p
-                className="mt-3 text-sm uppercase tracking-[0.5em] text-fuchsia-200/80 sm:text-base"
-                initial={{ y: 16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.22 }}
-              >
-                Made with love for Bela
-              </motion.p>
-            </>
-          ) : null}
-
-          <motion.p className="mt-6 text-sm text-fuchsia-100/70 sm:text-base" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.32 }}>
-            {isGreeting ? 'Welcome to her special day.' : eventCountdown && eventCountdown.length > 0 ? eventCountdown : 'Almost there...'}
-          </motion.p>
-        </div>
       </motion.div>
     </motion.div>
   )

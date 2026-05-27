@@ -46,7 +46,7 @@ function App() {
   // gallery removed; activePhoto state not needed
   const [isMusicPlaying, setIsMusicPlaying] = useState(false)
   const [showSplash, setShowSplash] = useState(true)
-  const [splashCount, setSplashCount] = useState(3)
+  
   const [showAudioControl, setShowAudioControl] = useState(false)
   const [forceMuteVideo, setForceMuteVideo] = useState(false)
   const [videoHasEnded, setVideoHasEnded] = useState(false)
@@ -78,37 +78,7 @@ function App() {
     return () => window.clearInterval(timer)
   }, [])
 
-  useEffect(() => {
-    if (!showSplash) {
-      return
-    }
-
-    setSplashCount(3)
-
-    const timeouts: number[] = []
-
-    const schedule = (value: number) => {
-      setSplashCount(value)
-
-      if (value <= 0) {
-        timeouts.push(window.setTimeout(() => setShowSplash(false), 1400))
-        return
-      }
-
-      if (value === 1) {
-        timeouts.push(window.setTimeout(() => schedule(0), 1000))
-        return
-      }
-
-      timeouts.push(window.setTimeout(() => schedule(value - 1), 1000))
-    }
-
-    timeouts.push(window.setTimeout(() => schedule(2), 1000))
-
-    return () => {
-      timeouts.forEach((timeout) => window.clearTimeout(timeout))
-    }
-  }, [showSplash])
+  
 
   // On first user scroll, reveal audio controls and force-mute the video
   useEffect(() => {
@@ -237,10 +207,11 @@ function App() {
         {showSplash ? (
           <Splash
             key="splash"
-            splashNumber={splashCount}
+            splashNumber={3}
             eventCountdown={countdown}
             isMusicPlaying={isMusicPlaying}
             toggleMusic={toggleMusic}
+            onCountdownFinish={() => setShowSplash(false)}
           />
         ) : null}
       </AnimatePresence>
