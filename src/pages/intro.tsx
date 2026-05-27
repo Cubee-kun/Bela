@@ -44,6 +44,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
   const followUpVideoRef = useRef<HTMLVideoElement | null>(null)
   const burstTimerRef = useRef<number | null>(null)
   const hideTimerRef = useRef<number | null>(null)
+  const playTimerRef = useRef<number | null>(null)
   const [muted, setMuted] = useState<boolean>(() => {
     try {
       const raw = localStorage.getItem('videoMuted')
@@ -121,6 +122,10 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
       if (hideTimerRef.current) {
         window.clearTimeout(hideTimerRef.current)
       }
+
+      if (playTimerRef.current) {
+        window.clearTimeout(playTimerRef.current)
+      }
     }
   }, [])
 
@@ -151,32 +156,40 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
 
     setGiftOpened(true)
     setShowBurst(true)
-    setShowFollowUpVideo(true)
+    setMuted(false)
+    try {
+      localStorage.setItem('videoMuted', JSON.stringify(false))
+    } catch {}
     onGiftOpen?.()
+
+    hideTimerRef.current = window.setTimeout(() => {
+      setShowFollowUpVideo(true)
+    }, 420)
 
     const followUpVideo = followUpVideoRef.current
     if (followUpVideo) {
       const tryPlayNow = async () => {
+        followUpVideo.muted = false
         try {
           await followUpVideo.play()
         } catch {
           try {
-            const previousMuted = followUpVideo.muted
             followUpVideo.muted = true
             await followUpVideo.play()
-            followUpVideo.muted = previousMuted
           } catch {
             // if this still fails, the hidden follow-up video is ready and can be played manually
           }
         }
       }
 
-      void tryPlayNow()
+      playTimerRef.current = window.setTimeout(() => {
+        void tryPlayNow()
+      }, 620)
     }
 
     burstTimerRef.current = window.setTimeout(() => {
       setShowBurst(false)
-    }, 1450)
+    }, 1250)
   }
 
 
@@ -226,7 +239,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
                 src="/vidio1.mp4"
                 playsInline
                 controls={showFollowUpVideo}
-                muted={muted}
+                muted={false}
                 onEnded={handleFollowUpEnded}
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
