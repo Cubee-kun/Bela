@@ -11,6 +11,7 @@ import foto4 from './assets/foto4.jpeg'
 import './App.css'
 const targetDate = new Date('2026-06-01T00:00:00')
 const musicSrc = '/music.mp3'
+const musicStartTime = 145
 
 const extraPhotos = [
   {
@@ -130,6 +131,20 @@ function App() {
 
   // gallery items removed
 
+  const seekMusicStart = (audio: HTMLAudioElement) => {
+    const applySeek = () => {
+      const targetTime = Math.min(musicStartTime, Math.max(0, audio.duration - 0.1))
+      audio.currentTime = Number.isFinite(targetTime) ? targetTime : musicStartTime
+    }
+
+    if (audio.readyState >= 1) {
+      applySeek()
+      return
+    }
+
+    audio.addEventListener('loadedmetadata', applySeek, { once: true })
+  }
+
   const toggleMusic = async () => {
     const audio = audioRef.current
 
@@ -138,6 +153,10 @@ function App() {
     }
 
     if (audio.paused) {
+      if (audio.currentTime < musicStartTime || audio.ended) {
+        seekMusicStart(audio)
+      }
+
       await audio.play()
       setIsMusicPlaying(true)
       return
@@ -155,6 +174,7 @@ function App() {
     }
 
     audio.muted = true
+    seekMusicStart(audio)
 
     try {
       await audio.play()
@@ -172,6 +192,8 @@ function App() {
     }
 
     audio.muted = false
+
+    seekMusicStart(audio)
 
     try {
       if (audio.paused) {
@@ -335,7 +357,7 @@ function App() {
 
       {/* lightbox removed */}
 
-      <audio ref={audioRef} src={musicSrc} loop preload="none" />
+      <audio ref={audioRef} src={musicSrc} preload="metadata" />
 
       {showAudioControl ? (
         <motion.button
