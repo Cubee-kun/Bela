@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 
@@ -11,8 +11,8 @@ type IntroProps = {
   onBurstComplete?: () => void
 }
 
-const flowerBurst = Array.from({ length: 220 }, (_, index) => {
-  const count = 220
+const flowerBurst = Array.from({ length: 96 }, (_, index) => {
+  const count = 96
   const angle = (Math.PI * 2 * index) / count
   const distance = 160 + (index % 20) * 18 + (Math.sin(index) * 20)
   const size = index % 11 === 0 ? 40 : 14 + (index % 7) * 4
@@ -27,8 +27,8 @@ const flowerBurst = Array.from({ length: 220 }, (_, index) => {
   }
 })
 
-const petalBurst = Array.from({ length: 140 }, (_, index) => {
-  const count = 140
+const petalBurst = Array.from({ length: 64 }, (_, index) => {
+  const count = 64
   const angle = (Math.PI * 2 * index) / count
   const distance = 180 + (index % 12) * 22 + (Math.cos(index) * 12)
 
@@ -41,7 +41,7 @@ const petalBurst = Array.from({ length: 140 }, (_, index) => {
   }
 })
 
-const backgroundRain = Array.from({ length: 160 }, (_, index) => {
+const backgroundRain = Array.from({ length: 72 }, (_, index) => {
   const letters = 'HAPPYBIRTHDAYBELA'
   const letter = letters[index % letters.length]
 
@@ -57,6 +57,7 @@ const backgroundRain = Array.from({ length: 160 }, (_, index) => {
 })
 
 function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBurstComplete }: IntroProps) {
+  const reduceMotion = useReducedMotion()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const followUpVideoRef = useRef<HTMLVideoElement | null>(null)
   const burstTimerRef = useRef<number | null>(null)
@@ -94,7 +95,9 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
     setMuted(true)
     try {
       localStorage.setItem('videoMuted', JSON.stringify(true))
-    } catch {}
+    } catch (storageError) {
+      void storageError
+    }
   }, [forceMute])
 
   // Try to play when instructed (after splash ends). If autoplay is blocked
@@ -113,13 +116,15 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
     const tryPlay = async () => {
       try {
         await video.play()
-      } catch (err) {
+      } catch (playError) {
+        void playError
         // Autoplay with sound blocked — try muted autoplay without persisting
         const prevMuted = video.muted
         video.muted = true
         try {
           await video.play()
-        } catch {
+        } catch (retryError) {
+          void retryError
           // give up; user can press play
         } finally {
           // restore muted to stored preference so we don't overwrite user choice
@@ -178,7 +183,9 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
     setMuted(false)
     try {
       localStorage.setItem('videoMuted', JSON.stringify(false))
-    } catch {}
+    } catch (storageError) {
+      void storageError
+    }
     onGiftOpen?.()
 
     hideTimerRef.current = window.setTimeout(() => {
@@ -217,12 +224,16 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
     setMuted(next)
     try {
       localStorage.setItem('videoMuted', JSON.stringify(next))
-    } catch {}
+    } catch (storageError) {
+      void storageError
+    }
 
     const v = videoRef.current
     if (!v) return
     v.muted = next
-    if (!next) v.play().catch(() => {})
+    if (!next) v.play().catch((playError) => {
+      void playError
+    })
   }
 
   if (dismissed) {
@@ -234,7 +245,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
       <div className="relative flex min-h-[calc(100vh-3rem)] w-full items-center justify-center">
         <div className="relative w-full max-w-6xl">
           <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-4xl">
-            {backgroundRain.map((glyph, index) => (
+            {!reduceMotion && backgroundRain.map((glyph, index) => (
               <motion.span
                 key={`${glyph.letter}-${index}`}
                 className="absolute left-0 top-0 select-none font-black tracking-[0.45em] text-fuchsia-300 drop-shadow-[0_0_14px_rgba(255,105,180,0.4)]"
@@ -273,6 +284,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
                 playsInline
                 controls
                 muted={muted}
+                preload="metadata"
                 onPlay={handlePlay}
                 onEnded={handleEnded}
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -289,6 +301,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
                 playsInline
                 controls={showFollowUpVideo}
                 muted={false}
+                preload="none"
                 onEnded={handleFollowUpEnded}
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -375,7 +388,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
                   animate={{ scale: [0.7, 6, 10], opacity: [0.98, 0.95, 0] }}
                   transition={{ duration: 1.0, ease: 'easeOut' }}
                 />
-                {flowerBurst.map((flower, index) => (
+                {(!reduceMotion ? flowerBurst : flowerBurst.slice(0, 24)).map((flower, index) => (
                   <motion.span
                     key={`flower-${index}`}
                     className="absolute left-1/2 top-[44%] flex items-center justify-center text-rose-100 drop-shadow-[0_0_18px_rgba(255,255,255,0.45)]"
@@ -393,7 +406,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
                     {flower.symbol}
                   </motion.span>
                 ))}
-                {petalBurst.map((petal, index) => (
+                {(!reduceMotion ? petalBurst : petalBurst.slice(0, 16)).map((petal, index) => (
                   <motion.span
                     key={`petal-${index}`}
                     className="absolute left-1/2 top-[44%] rounded-full bg-rose-100/90 blur-[0.5px]"

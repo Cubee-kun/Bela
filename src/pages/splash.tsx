@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import './splash.css'
 
 const splashLetters = 'HAPPYBIRTHDAYBELA'.split('')
 
-const splashGlyphs = Array.from({ length: 180 }, (_, index) => {
+const splashGlyphs = Array.from({ length: 72 }, (_, index) => {
   const letter = splashLetters[index % splashLetters.length]
 
   return {
@@ -28,6 +28,7 @@ type SplashProps = {
 
 function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic, onCountdownFinish }: SplashProps) {
   const isGreeting = splashNumber === 0
+  const reduceMotion = useReducedMotion()
   const [showLoader, setShowLoader] = useState(true)
   const [contentVisible, setContentVisible] = useState(false)
   const [countValue, setCountValue] = useState<number | null>(null)
@@ -44,7 +45,6 @@ function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic, onC
       const t = window.setTimeout(() => setContentVisible(true), 260)
       return () => window.clearTimeout(t)
     }
-    setContentVisible(false)
   }, [showLoader])
 
   // countdown 3 -> 0 over 3 seconds, then show "Happy Birthday" for 1s
@@ -54,7 +54,7 @@ function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic, onC
     const interval = 3000 / 4 // 4 steps (3,2,1,0) across 3s -> 0.75s
     const timers: number[] = []
 
-    setCountValue(3)
+    timers.push(window.setTimeout(() => setCountValue(3), 0))
 
     for (let i = 1; i <= 3; i++) {
       timers.push(window.setTimeout(() => setCountValue(3 - i), Math.round(i * interval)))
@@ -72,7 +72,7 @@ function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic, onC
     }, 4000))
 
     return () => timers.forEach((t) => window.clearTimeout(t))
-  }, [contentVisible])
+  }, [contentVisible, onCountdownFinish])
 
   return (
     <motion.div
@@ -119,7 +119,7 @@ function Splash({ splashNumber, eventCountdown, isMusicPlaying, toggleMusic, onC
         </motion.div>
       </div>
       <div className="splash-rain" aria-hidden="true">
-        {splashGlyphs.map((glyph, index) => (
+        {!reduceMotion && splashGlyphs.map((glyph, index) => (
           <motion.div
             key={`${glyph.letter}-${index}`}
             className="splash-glyph"

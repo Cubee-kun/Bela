@@ -27,7 +27,7 @@
 .splash-grain {
   position: absolute;
   inset: -20%;
-  opacity: 0.14;
+  opacity: 0.08;
   mix-blend-mode: overlay;
   background-image:
     radial-gradient(circle at 20% 20%, rgba(255,255,255,0.38) 0 1px, transparent 1.6px),
@@ -35,8 +35,7 @@
     radial-gradient(circle at 40% 70%, rgba(255,255,255,0.22) 0 1px, transparent 1.6px),
     radial-gradient(circle at 70% 60%, rgba(255,255,255,0.2) 0 1px, transparent 1.6px);
   background-size: 3px 3px, 4px 4px, 5px 5px, 6px 6px;
-  animation: grainShift 1.2s steps(2) infinite;
-  filter: blur(0.35px);
+  animation: grainShift 1.8s steps(2) infinite;
 }
 
 .splash-soft-blur {
@@ -66,6 +65,7 @@
   left: 0;
   transform: translate3d(0, -20vh, 0);
   will-change: transform, opacity;
+  contain: layout paint;
 }
 
 .splash-word {
@@ -79,7 +79,6 @@
     0 0 10px rgba(255, 105, 180, 0.4),
     0 0 24px rgba(244, 114, 182, 0.28),
     0 6px 24px rgba(0, 0, 0, 0.42);
-  filter: blur(0.1px);
 }
 
 .splash-glyph:nth-child(3n) .splash-word,
