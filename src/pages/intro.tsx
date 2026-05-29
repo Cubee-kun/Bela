@@ -9,6 +9,7 @@ type IntroProps = {
   onVideoEnd?: () => void
   onGiftOpen?: () => void
   onBurstComplete?: () => void
+  onFollowUpEnd?: () => void
 }
 
 const flowerBurst = Array.from({ length: 96 }, (_, index) => {
@@ -41,28 +42,15 @@ const petalBurst = Array.from({ length: 64 }, (_, index) => {
   }
 })
 
-const backgroundRain = Array.from({ length: 72 }, (_, index) => {
-  const letters = 'HAPPYBIRTHDAYBELA'
-  const letter = letters[index % letters.length]
-
-  return {
-    letter,
-    left: (index * 6.1) % 100,
-    delay: index * -0.11,
-    duration: 4.8 + (index % 7) * 0.28,
-    size: 11 + (index % 5) * 2,
-    xOffset: ((index % 6) - 2.5) * 4,
-    opacity: 0.12 + (index % 5) * 0.08,
-  }
-})
-
-function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBurstComplete }: IntroProps) {
+function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBurstComplete, onFollowUpEnd }: IntroProps) {
   const reduceMotion = useReducedMotion()
+  const matrixCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const followUpVideoRef = useRef<HTMLVideoElement | null>(null)
+  const followUpPreloadRef = useRef<HTMLVideoElement | null>(null)
   const burstTimerRef = useRef<number | null>(null)
   const hideTimerRef = useRef<number | null>(null)
-  const playTimerRef = useRef<number | null>(null)
+  const [followUpReady, setFollowUpReady] = useState(false)
   const [muted, setMuted] = useState<boolean>(() => {
     try {
       const raw = localStorage.getItem('videoMuted')
@@ -145,12 +133,141 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
       if (hideTimerRef.current) {
         window.clearTimeout(hideTimerRef.current)
       }
-
-      if (playTimerRef.current) {
-        window.clearTimeout(playTimerRef.current)
-      }
     }
   }, [])
+
+  useEffect(() => {
+    const canvas = matrixCanvasRef.current
+    if (!canvas) return
+
+    const context = canvas.getContext('2d')
+    if (!context) return
+
+    const letters = 'HAPPYBIRTHDAYBELA'
+    const alphabet = letters.split('')
+    const dpr = Math.max(1, window.devicePixelRatio || 1)
+    const TARGET_ROWS = 24
+    const MIN_FONT = 10
+    const MAX_COLUMNS = 80
+    const TARGET_FPS = 24
+    const FRAME_INTERVAL_MS = 1000 / TARGET_FPS
+
+    let width = 0
+    let height = 0
+    let fontSize = 16
+    let columns = 0
+    let rainDrops: number[] = []
+    let lastFrameTime = 0
+
+    const resizeCanvas = () => {
+      // Force full viewport sizing for a fullscreen matrix background
+      width = window.innerWidth
+      height = window.innerHeight
+
+      canvas.width = Math.floor(width * dpr)
+      canvas.height = Math.floor(height * dpr)
+      context.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+      fontSize = Math.max(MIN_FONT, Math.floor(height / TARGET_ROWS))
+      columns = Math.max(1, Math.min(MAX_COLUMNS, Math.floor(width / fontSize)))
+      rainDrops = Array.from({ length: columns }, (_, index) => -(index % 8) * 8 - Math.random() * 32)
+    }
+
+    const draw = () => {
+      context.fillStyle = 'rgba(0, 0, 0, 0.1)'
+      context.fillRect(0, 0, width, height)
+      context.font = `bold ${fontSize}px monospace`
+
+      for (let index = 0; index < rainDrops.length; index += 1) {
+        const text = alphabet[Math.floor(Math.random() * alphabet.length)]
+        const x = index * fontSize
+        const y = rainDrops[index] * fontSize
+        const inCenterBand = x > width * 0.18 && x < width * 0.82 && y > height * 0.18 && y < height * 0.82
+
+        if (inCenterBand) {
+          // stronger but still modest glow so video remains visible
+          context.shadowBlur = 6
+          context.shadowColor = '#ff4da6'
+          context.fillStyle = 'rgba(255,77,166,0.88)'
+        } else {
+          context.shadowBlur = 0
+          context.fillStyle = Math.random() > 0.995 ? '#ffffff' : 'rgba(255, 20, 147, 0.22)'
+        }
+
+        context.fillText(text, x, y)
+
+        if (y > height && Math.random() > 0.975) {
+          rainDrops[index] = 0
+        }
+
+        rainDrops[index] += 0.9
+      }
+    }
+
+    resizeCanvas()
+
+    let animationFrameId = 0
+    const renderLoop = (timestamp: number) => {
+      if (timestamp - lastFrameTime >= FRAME_INTERVAL_MS) {
+        draw()
+        lastFrameTime = timestamp
+      }
+
+      animationFrameId = window.requestAnimationFrame(renderLoop)
+    }
+
+    if (reduceMotion) {
+      draw()
+    } else {
+      animationFrameId = window.requestAnimationFrame(renderLoop)
+    }
+
+    const handleResize = () => resizeCanvas()
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [reduceMotion])
+
+  // Warm-up follow-up video early so transition from gift to vidio1 is smooth.
+  useEffect(() => {
+    const preloadVideo = followUpPreloadRef.current
+    if (!preloadVideo) return
+
+    const onReady = () => setFollowUpReady(true)
+    preloadVideo.addEventListener('canplaythrough', onReady)
+    preloadVideo.load()
+
+    return () => {
+      preloadVideo.removeEventListener('canplaythrough', onReady)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showFollowUpVideo) return
+
+    const followUpVideo = followUpVideoRef.current
+    if (!followUpVideo) return
+
+    const tryPlayFollowUp = async () => {
+      followUpVideo.muted = false
+
+      try {
+        await followUpVideo.play()
+      } catch {
+        try {
+          followUpVideo.muted = true
+          await followUpVideo.play()
+        } catch {
+          // If autoplay still fails, keep controls available for manual play.
+        }
+      }
+    }
+
+    void tryPlayFollowUp()
+  }, [showFollowUpVideo])
 
   // Track first play so we can notify parent once
   const playedOnceRef = useRef(false)
@@ -169,6 +286,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
 
   const handleFollowUpEnded = () => {
     onBurstComplete?.()
+    onFollowUpEnd?.()
     setDismissed(true)
   }
 
@@ -190,28 +308,7 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
 
     hideTimerRef.current = window.setTimeout(() => {
       setShowFollowUpVideo(true)
-    }, 420)
-
-    const followUpVideo = followUpVideoRef.current
-    if (followUpVideo) {
-      const tryPlayNow = async () => {
-        followUpVideo.muted = false
-        try {
-          await followUpVideo.play()
-        } catch {
-          try {
-            followUpVideo.muted = true
-            await followUpVideo.play()
-          } catch {
-            // if this still fails, the hidden follow-up video is ready and can be played manually
-          }
-        }
-      }
-
-      playTimerRef.current = window.setTimeout(() => {
-        void tryPlayNow()
-      }, 620)
-    }
+    }, followUpReady ? 220 : 420)
 
     burstTimerRef.current = window.setTimeout(() => {
       setShowBurst(false)
@@ -243,35 +340,11 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
   return (
     <Reveal className="relative min-h-screen overflow-hidden bg-black px-4 py-6 sm:px-6 lg:px-8">
       <div className="relative flex min-h-[calc(100vh-3rem)] w-full items-center justify-center">
-        <div className="relative w-full max-w-6xl">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-4xl">
-            {!reduceMotion && backgroundRain.map((glyph, index) => (
-              <motion.span
-                key={`${glyph.letter}-${index}`}
-                className="absolute left-0 top-0 select-none font-black tracking-[0.45em] text-fuchsia-300 drop-shadow-[0_0_14px_rgba(255,105,180,0.4)]"
-                style={{
-                  left: `${glyph.left}%`,
-                  fontSize: `${glyph.size}px`,
-                  opacity: glyph.opacity,
-                }}
-                animate={{
-                  opacity: [0, glyph.opacity, glyph.opacity, 0],
-                  y: ['-18vh', '44vh', '112vh'],
-                  x: [glyph.xOffset, glyph.xOffset + 9, glyph.xOffset - 5],
-                  scale: [0.92, 1, 0.98],
-                }}
-                transition={{
-                  duration: glyph.duration,
-                  repeat: Infinity,
-                  ease: 'linear',
-                  delay: glyph.delay,
-                }}
-              >
-                {glyph.letter}
-              </motion.span>
-            ))}
-
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,105,180,0.16),transparent_28%),radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_22%)]" />
+        <div className="relative mx-auto flex w-full max-w-98 items-center justify-center sm:max-w-98">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-4xl z-20">
+            {/* Fullscreen matrix canvas */}
+            <canvas ref={matrixCanvasRef} className="fixed inset-0 h-screen w-screen z-0 pointer-events-none" aria-hidden="true" />
+            <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_center,rgba(255,105,180,0.16),transparent_28%),radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_22%)]" />
           </div>
 
           <AnimatePresence mode="wait">
@@ -279,12 +352,12 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
               <motion.video
                 key="intro-video"
                 ref={videoRef}
-                className="relative z-10 h-[min(86vh,780px)] w-full rounded-4xl bg-black object-contain shadow-2xl sm:h-[min(84vh,760px)] sm:rounded-4xl"
+                className="relative z-30 h-[min(72vh,560px)] w-full rounded-2xl object-contain shadow-md sm:h-[min(72vh,560px)] sm:rounded-2xl"
                 src="/vidio.mp4"
                 playsInline
                 controls
                 muted={muted}
-                preload="metadata"
+                preload="auto"
                 onPlay={handlePlay}
                 onEnded={handleEnded}
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -296,12 +369,12 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
               <motion.video
                 key="follow-up-video"
                 ref={followUpVideoRef}
-                className={`relative z-10 h-[min(86vh,780px)] w-full rounded-4xl bg-black object-contain shadow-2xl sm:h-[min(84vh,760px)] ${showFollowUpVideo ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+                className={`relative z-30 h-[min(72vh,560px)] w-full rounded-2xl object-contain shadow-md sm:h-[min(72vh,560px)] ${showFollowUpVideo ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
                 src="/vidio1.mp4"
                 playsInline
                 controls={showFollowUpVideo}
                 muted={false}
-                preload="none"
+                preload="auto"
                 onEnded={handleFollowUpEnded}
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -311,12 +384,23 @@ function Intro({ playNow, forceMute, onVideoStart, onVideoEnd, onGiftOpen, onBur
             )}
           </AnimatePresence>
 
+          <video
+            ref={followUpPreloadRef}
+            src="/vidio1.mp4"
+            preload="auto"
+            muted
+            playsInline
+            className="hidden"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+
           {videoEnded && !showFollowUpVideo ? (
             <motion.button
               key="gift-box"
               type="button"
               onClick={openGift}
-              className="absolute inset-0 z-20 flex items-center justify-center overflow-hidden rounded-4xl bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_28%),linear-gradient(180deg,#050505_0%,#0d0d0d_100%)] shadow-2xl"
+              className="absolute inset-0 z-50 flex items-center justify-center overflow-hidden rounded-4xl bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_28%),linear-gradient(180deg,#050505_0%,#0d0d0d_100%)] shadow-2xl"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}

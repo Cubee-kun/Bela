@@ -35,3 +35,39 @@ a {
 #root {
   min-height: 100vh;
 }
+
+@keyframes splashGlow {
+  0%,
+  100% {
+    opacity: 0.18;
+    color: rgba(236, 72, 153, 0.28);
+    text-shadow: none;
+    transform: scale(0.96);
+  }
+
+  28% {
+    opacity: 1;
+    color: rgba(255, 105, 180, 0.98);
+    text-shadow:
+      0 0 10px rgba(255, 105, 180, 0.75),
+      0 0 24px rgba(236, 72, 153, 0.4),
+      0 0 40px rgba(255, 255, 255, 0.12);
+    transform: scale(1.08);
+  }
+
+  54% {
+    opacity: 0.7;
+    color: rgba(244, 114, 182, 0.88);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes splashRowFall {
+  0% {
+    transform: translateY(-1.5%);
+  }
+
+  100% {
+    transform: translateY(1.5%);
+  }
+}

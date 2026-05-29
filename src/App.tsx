@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 // Gallery removed per request
+import BookFlip from './components/BookFlip'
 import Hero from './pages/intro'
 import Splash from './pages/splash'
 import heroImage from './assets/hero.png'
@@ -8,33 +9,33 @@ import foto1 from './assets/foto1.jpeg'
 import foto2 from './assets/foto2.jpeg'
 import foto3 from './assets/foto3.jpeg'
 import foto4 from './assets/foto4.jpeg'
-import './App.css'
 const targetDate = new Date('2026-06-01T00:00:00')
 const musicSrc = '/music.mp3'
 const musicStartTime = 145
+const SPLASH_TO_VIDEO_DELAY_MS = 900
 
 const extraPhotos = [
   {
     title: 'Manis banget',
-    caption: 'Satu momen kecil yang rasanya tetap hangat kalau diingat lagi.',
+    caption: '“Satu momen kecil yang hangatnya tetap tinggal, bahkan saat diingat lagi.”',
     position: 'object-center',
     src: foto1,
   },
   {
     title: 'Peluk lembut',
-    caption: 'Foto yang terasa tenang, seperti jeda yang paling kamu butuhkan.',
+    caption: '“Peluk yang lembut, seperti jeda paling manis di tengah hari yang ramai.”',
     position: 'object-top',
     src: foto2,
   },
   {
     title: 'Cahaya favorit',
-    caption: 'Nuansa yang paling pas buat hari spesial kamu.',
+    caption: '“Kamu itu cahaya favorit yang bikin hari terasa lebih hangat.”',
     position: 'object-[50%_35%]',
     src: foto3,
   },
   {
     title: 'Memori manis',
-    caption: 'Simpan yang ini, biar bisa dibuka lagi kapan saja.',
+    caption: '“Simpan memori ini baik-baik, supaya senyumnya bisa diingat kapan saja.”',
     position: 'object-[50%_15%]',
     src: foto4,
   },
@@ -45,13 +46,18 @@ function App() {
   const [countdown, setCountdown] = useState('')
   // gallery removed; activePhoto state not needed
   const [isMusicPlaying, setIsMusicPlaying] = useState(false)
+  const [showBookFlip, setShowBookFlip] = useState(false)
   const [showSplash, setShowSplash] = useState(true)
+  const [bookFlipMode, setBookFlipMode] = useState<'intro' | 'post'>('intro')
+  const [shownPostBookFlip, setShownPostBookFlip] = useState(false)
+  const [bookFlipClosed, setBookFlipClosed] = useState(false)
   
   const [showAudioControl, setShowAudioControl] = useState(false)
   const [forceMuteVideo, setForceMuteVideo] = useState(false)
   const [videoHasEnded, setVideoHasEnded] = useState(false)
-  const [showEqualizer, setShowEqualizer] = useState(false)
+  const [, setShowEqualizer] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const splashExitTimerRef = useRef<number | null>(null)
 
   // scroll behavior removed (no automatic scroll-restoration or scrolling)
 
@@ -98,6 +104,14 @@ function App() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [videoHasEnded])
+
+  useEffect(() => {
+    return () => {
+      if (splashExitTimerRef.current) {
+        window.clearTimeout(splashExitTimerRef.current)
+      }
+    }
+  }, [])
 
   // gallery items removed
 
@@ -196,12 +210,103 @@ function App() {
     setVideoHasEnded(true)
   }
 
+  const handleSplashFinish = () => {
+    if (splashExitTimerRef.current) {
+      window.clearTimeout(splashExitTimerRef.current)
+    }
+
+    splashExitTimerRef.current = window.setTimeout(() => {
+      setShowSplash(false)
+    }, SPLASH_TO_VIDEO_DELAY_MS)
+  }
+
+  const handleBookFlipCompleteIntro = () => {
+    setShowBookFlip(false)
+    setShowSplash(true)
+    setBookFlipMode('intro')
+    setBookFlipClosed(true)
+  }
+
+  const handleBookFlipCompletePost = async () => {
+    setShowBookFlip(false)
+    setShowSplash(false)
+    // reveal music and show equalizer when closing the book at the end
+    void revealMusic()
+    setShowEqualizer(true)
+    setShowAudioControl(true)
+    setBookFlipMode('intro')
+    setShownPostBookFlip(true)
+    setBookFlipClosed(true)
+  }
+
+  const showBookFlipAfterFollowUp = () => {
+    // avoid re-showing the post-bookflip if it was already shown or the user already closed the book
+    if (bookFlipClosed || shownPostBookFlip) return
+    setBookFlipMode('post')
+    setShowBookFlip(true)
+    setShownPostBookFlip(true)
+    // start music and UI controls as soon as the book appears after the follow-up video
+    void revealMusic()
+    setShowEqualizer(true)
+    setShowAudioControl(true)
+  }
+
+
   return (
     <main id="top" className="relative min-h-screen overflow-x-hidden text-stone-800">
-      <div className="page-backdrop fixed inset-0 -z-20" aria-hidden="true" />
-      <div className="floating-orb floating-orb-left fixed -left-28 top-12 -z-10 h-72 w-72 rounded-full blur-3xl" aria-hidden="true" />
-      <div className="floating-orb floating-orb-right fixed right-0 top-1/3 -z-10 h-80 w-80 rounded-full blur-3xl" aria-hidden="true" />
-      <div className="floating-orb floating-orb-bottom fixed bottom-0 left-1/3 -z-10 h-64 w-64 rounded-full blur-3xl" aria-hidden="true" />
+      <div
+        className="fixed inset-0 -z-20"
+        aria-hidden="true"
+        style={{
+          background:
+            'radial-gradient(circle at 20% 20%, rgba(255, 244, 234, 0.9), transparent 30%), radial-gradient(circle at 80% 15%, rgba(252, 231, 243, 0.85), transparent 26%), linear-gradient(180deg, #fff9f5 0%, #fff2eb 42%, #f6ede6 100%)',
+        }}
+      />
+      <motion.div
+        className="fixed -left-28 top-12 -z-10 h-72 w-72 rounded-full blur-3xl"
+        aria-hidden="true"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(251, 191, 36, 0.22) 42%, rgba(244, 114, 182, 0.08) 72%, transparent 100%)',
+        }}
+        animate={{ y: [0, -20, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 14, ease: 'easeInOut', repeat: Infinity }}
+      />
+      <motion.div
+        className="fixed right-0 top-1/3 -z-10 h-80 w-80 rounded-full blur-3xl"
+        aria-hidden="true"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(251, 191, 36, 0.22) 42%, rgba(244, 114, 182, 0.08) 72%, transparent 100%)',
+        }}
+        animate={{ y: [0, 18, 0], scale: [1, 1.06, 1] }}
+        transition={{ duration: 16, ease: 'easeInOut', repeat: Infinity, delay: -3 }}
+      />
+      <motion.div
+        className="fixed bottom-0 left-1/3 -z-10 h-64 w-64 rounded-full blur-3xl"
+        aria-hidden="true"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(251, 191, 36, 0.22) 42%, rgba(244, 114, 182, 0.08) 72%, transparent 100%)',
+        }}
+        animate={{ y: [0, -16, 0], scale: [1, 1.05, 1] }}
+        transition={{ duration: 15, ease: 'easeInOut', repeat: Infinity, delay: -6 }}
+      />
+
+      <AnimatePresence>
+        {showBookFlip ? (
+          <BookFlip
+            key="book-flip"
+            coverImage={heroImage}
+            coverTitle="Happy Birthday Sayang"
+            coverSubtitle="Semoga hari ini jadi awal yang paling manis untuk tahun-tahun ke depan."
+            pages={extraPhotos}
+            isMusicPlaying={isMusicPlaying}
+            toggleMusic={toggleMusic}
+            onComplete={bookFlipMode === 'intro' ? handleBookFlipCompleteIntro : handleBookFlipCompletePost}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showSplash ? (
@@ -211,147 +316,57 @@ function App() {
             eventCountdown={countdown}
             isMusicPlaying={isMusicPlaying}
             toggleMusic={toggleMusic}
-            onCountdownFinish={() => setShowSplash(false)}
+            onCountdownFinish={handleSplashFinish}
           />
         ) : null}
       </AnimatePresence>
 
       <Hero
-        playNow={!showSplash}
+        playNow={!showSplash && !showBookFlip}
         forceMute={forceMuteVideo}
         onVideoStart={handleVideoStart}
         onVideoEnd={handleVideoEnd}
         onGiftOpen={handleGiftOpen}
         onBurstComplete={handleBurstComplete}
+        onFollowUpEnd={showBookFlipAfterFollowUp}
       />
-
-      <AnimatePresence>
-        {showEqualizer ? (
-          <motion.section
-            className="mx-auto w-full max-w-6xl px-2 py-3 sm:min-h-[190vh] sm:px-6 sm:pb-16 sm:pt-8 lg:px-8"
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-          >
-            <div className="sticky top-3 mx-auto w-full overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_20px_80px_rgba(122,71,75,0.14)] backdrop-blur-xl sm:top-6 sm:rounded-4xl">
-              <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="relative min-h-0 bg-stone-950 sm:min-h-80">
-                  <img
-                    src={heroImage}
-                    alt="Kenangan manis untuk Bela Amelia Nuralfiani"
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-8">
-                    <p className="text-xs font-semibold uppercase tracking-[0.45em] text-rose-100/90">
-                      Foto kenangan
-                    </p>
-                    <h2 className="mt-2 max-w-md font-serif text-[1.4rem] leading-tight text-white sm:mt-3 sm:text-4xl">
-                      Happy Birthday, Bela Amelia Nuralfiani
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="px-3 py-3 sm:px-8 sm:py-10">
-                  <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.45em] text-rose-400">
-                        Equalizer visual
-                      </p>
-                      <h3 className="mt-1.5 font-serif text-lg leading-tight text-stone-900 sm:mt-2 sm:text-3xl">
-                        Sayang..., Semoga hari ini jadi awal yang paling manis untuk tahun-tahun ke depan.
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={toggleMusic}
-                      className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-800 sm:px-4 sm:py-2 sm:text-sm"
-                    >
-                      {isMusicPlaying ? 'Music Off' : 'Music On'}
-                    </button>
-                  </div>
-
-                  <div className="mt-4 flex h-20 items-end justify-center gap-1.5 sm:mt-8 sm:h-40 sm:gap-3" aria-hidden="true">
-                    {[18, 54, 28, 72, 36, 84, 48, 66, 24, 90, 42, 78].map((barHeight, index) => (
-                      <motion.span
-                        key={`${barHeight}-${index}`}
-                        className="block w-2 rounded-full bg-linear-to-t from-rose-400 via-fuchsia-400 to-amber-200 shadow-[0_0_18px_rgba(236,72,153,0.35)] sm:w-4"
-                        style={{ height: `${barHeight}%` }}
-                        animate={{
-                          height: [`${barHeight}%`, `${Math.max(18, barHeight - 22)}%`, `${Math.min(92, barHeight + 18)}%`, `${barHeight}%`],
-                        }}
-                        transition={{
-                          duration: 1.4 + (index % 4) * 0.18,
-                          repeat: Infinity,
-                          ease: 'easeInOut',
-                          delay: index * 0.08,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="photo-grid mt-6 grid gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
-              {extraPhotos.map((photo, index) => (
-                <motion.figure
-                  key={photo.title}
-                  className="polaroid-card"
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, delay: 0.08 * index }}
-                >
-                  <div className={`polaroid-stack ${index % 2 === 0 ? 'polaroid-tilt-left' : 'polaroid-tilt-right'}`}>
-                    <div className="polaroid-tape polaroid-tape-left" aria-hidden="true" />
-                    <div className="polaroid-tape polaroid-tape-right" aria-hidden="true" />
-
-                    <div className="polaroid-photo-wrap">
-                      <img
-                        src={photo.src}
-                        alt={photo.title}
-                        className={`polaroid-photo ${photo.position}`}
-                      />
-                      <div className="absolute inset-0 bg-linear-to-t from-black/35 via-black/5 to-transparent" />
-                    </div>
-
-                    <figcaption className="polaroid-caption">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.48em] text-rose-400/90">
-                        Foto tambahan
-                      </p>
-                      <h4 className="mt-3 font-serif text-2xl text-stone-900">
-                        {photo.title}
-                      </h4>
-                      <p className="mt-3 text-sm leading-6 text-stone-600">
-                        {photo.caption}
-                      </p>
-                    </figcaption>
-                  </div>
-                </motion.figure>
-              ))}
-            </div>
-          </motion.section>
-        ) : null}
-      </AnimatePresence>
-      {/* Gallery removed */}
-
-      {/* lightbox removed */}
 
       <audio ref={audioRef} src={musicSrc} preload="metadata" />
 
-      {showAudioControl ? (
+      {showAudioControl && !showBookFlip ? (
         <motion.button
           type="button"
-          className="audio-dock fixed bottom-5 right-5 z-40 inline-flex items-center gap-3 rounded-full border border-white/40 bg-white/85 px-4 py-3 text-stone-700 shadow-[0_16px_50px_rgba(122,71,75,0.2)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-3 rounded-full border border-white/40 bg-white/85 px-4 py-3 text-stone-700 shadow-[0_16px_50px_rgba(122,71,75,0.2)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white"
           onClick={toggleMusic}
+          animate={{ y: [0, -4, 0] }}
+          transition={{ duration: 4.5, ease: 'easeInOut', repeat: Infinity }}
           whileTap={{ scale: 0.96 }}
         >
-          <span className={`audio-wave ${isMusicPlaying ? 'is-playing' : ''}`} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
+          <span className="inline-flex h-5 w-5.5 items-end gap-0.75" aria-hidden="true">
+            <motion.span
+              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
+              style={{ height: 8 }}
+              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
+              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0 }}
+            />
+            <motion.span
+              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
+              style={{ height: 16 }}
+              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
+              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0, delay: 0.12 }}
+            />
+            <motion.span
+              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
+              style={{ height: 12 }}
+              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
+              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0, delay: 0.24 }}
+            />
+            <motion.span
+              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
+              style={{ height: 18 }}
+              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
+              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0, delay: 0.36 }}
+            />
           </span>
           <span className="text-left">
             <span className="block text-[10px] font-semibold uppercase tracking-[0.35em] text-rose-400">
