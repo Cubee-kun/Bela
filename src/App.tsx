@@ -51,8 +51,6 @@ function App() {
   const [bookFlipMode, setBookFlipMode] = useState<'intro' | 'post'>('intro')
   const [shownPostBookFlip, setShownPostBookFlip] = useState(false)
   const [bookFlipClosed, setBookFlipClosed] = useState(false)
-  
-  const [showAudioControl, setShowAudioControl] = useState(false)
   const [forceMuteVideo, setForceMuteVideo] = useState(false)
   const [videoHasEnded, setVideoHasEnded] = useState(false)
   const [, setShowEqualizer] = useState(false)
@@ -97,7 +95,6 @@ function App() {
       if (fired) return
       fired = true
       setShowEqualizer(true)
-      setShowAudioControl(true)
       setForceMuteVideo(true)
     }
 
@@ -168,7 +165,7 @@ function App() {
     }
   }
 
-  const revealMusic = async () => {
+  const revealMusic = async (options: { preserveCurrentTime?: boolean } = {}) => {
     const audio = audioRef.current
 
     if (!audio) {
@@ -177,7 +174,9 @@ function App() {
 
     audio.muted = false
 
-    seekMusicStart(audio)
+    if (!options.preserveCurrentTime) {
+      seekMusicStart(audio)
+    }
 
     try {
       if (audio.paused) {
@@ -201,9 +200,8 @@ function App() {
   }
 
   const handleBurstComplete = () => {
-    void revealMusic()
+    void revealMusic({ preserveCurrentTime: true })
     setShowEqualizer(true)
-    setShowAudioControl(true)
   }
 
   const handleVideoEnd = () => {
@@ -230,10 +228,9 @@ function App() {
   const handleBookFlipCompletePost = async () => {
     setShowBookFlip(false)
     setShowSplash(false)
-    // reveal music and show equalizer when closing the book at the end
-    void revealMusic()
+    // keep playing from the same point instead of resetting the track
+    void revealMusic({ preserveCurrentTime: true })
     setShowEqualizer(true)
-    setShowAudioControl(true)
     setBookFlipMode('intro')
     setShownPostBookFlip(true)
     setBookFlipClosed(true)
@@ -246,9 +243,8 @@ function App() {
     setShowBookFlip(true)
     setShownPostBookFlip(true)
     // start music and UI controls as soon as the book appears after the follow-up video
-    void revealMusic()
+    void revealMusic({ preserveCurrentTime: true })
     setShowEqualizer(true)
-    setShowAudioControl(true)
   }
 
 
@@ -333,49 +329,6 @@ function App() {
 
       <audio ref={audioRef} src={musicSrc} preload="metadata" />
 
-      {showAudioControl && !showBookFlip ? (
-        <motion.button
-          type="button"
-          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-3 rounded-full border border-white/40 bg-white/85 px-4 py-3 text-stone-700 shadow-[0_16px_50px_rgba(122,71,75,0.2)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white"
-          onClick={toggleMusic}
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 4.5, ease: 'easeInOut', repeat: Infinity }}
-          whileTap={{ scale: 0.96 }}
-        >
-          <span className="inline-flex h-5 w-5.5 items-end gap-0.75" aria-hidden="true">
-            <motion.span
-              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
-              style={{ height: 8 }}
-              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
-              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0 }}
-            />
-            <motion.span
-              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
-              style={{ height: 16 }}
-              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
-              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0, delay: 0.12 }}
-            />
-            <motion.span
-              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
-              style={{ height: 12 }}
-              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
-              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0, delay: 0.24 }}
-            />
-            <motion.span
-              className="w-0.75 origin-bottom rounded-full bg-[linear-gradient(180deg,#f9a8d4_0%,#f59e0b_100%)] opacity-55"
-              style={{ height: 18 }}
-              animate={isMusicPlaying ? { scaleY: [0.35, 1, 0.5, 0.35] } : { scaleY: 0.35 }}
-              transition={{ duration: 0.95, ease: 'easeInOut', repeat: isMusicPlaying ? Infinity : 0, delay: 0.36 }}
-            />
-          </span>
-          <span className="text-left">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.35em] text-rose-400">
-              Music On / Off
-            </span>
-            <span className="block text-sm font-medium">{isMusicPlaying ? 'Pause lagu' : 'Play lagu'}</span>
-          </span>
-        </motion.button>
-      ) : null}
     </main>
   )
 }
